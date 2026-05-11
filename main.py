@@ -6,7 +6,7 @@ pygame.init()
 pygame.mixer.init()
 
 # Fonts
-csfont = pygame.font.SysFont("comicsans", 8, bold=True)
+csfont = pygame.font.SysFont("comicsans", 16, bold=True)
 bigfont = pygame.font.SysFont("Liberation Serif", 32, bold=True)
 
 # Screen size and refresh rate
@@ -14,6 +14,7 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 800
 SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
 FRAMERATE = 60
+MINUTE = 60 * FRAMERATE
 
 BUTTON_GAP = 38
 
@@ -102,6 +103,9 @@ class Button(object):
 
 if __name__ == "__main__":
 
+    #
+    # Initialization
+    #
     done = False
 
     pos = 0
@@ -121,14 +125,18 @@ if __name__ == "__main__":
             buttons.append(Button(pos * BUTTON_GAP, filename))
             pos += 1
 
+    #
     # Main loop
+    #
     while not done:
 
+        #
+        # Control and input
+        #
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
 
-            
             elif event.type == pygame.KEYDOWN:
                 
                 # Press 'A' key to activate every button at once!
@@ -140,6 +148,13 @@ if __name__ == "__main__":
                 elif event.key == pygame.K_q:
                     for button in buttons:
                         button.play = False
+
+                # Use right and left arrow keys to add/subtract 1 minute from max alert time.
+                elif event.key == pygame.K_RIGHT:
+                    MAX_ALERT_TIME += MINUTE
+
+                elif event.key == pygame.K_LEFT and (MAX_ALERT_TIME - MINUTE) > MIN_ALERT_TIME:
+                    MAX_ALERT_TIME -= MINUTE
 
             # Scroll through the buttons. (The 'scroll' variable is an
             # offset that is added to the buttons' original positions
@@ -153,11 +168,27 @@ if __name__ == "__main__":
                 if scroll > BUTTON_GAP or (scroll + (pos * BUTTON_GAP) + BUTTON_GAP) < SCREEN_HEIGHT:
                     scroll -= (event.y * FRAMERATE)
 
+        # Use continuous key polling for speedy interval change.
+        pressed = pygame.key.get_pressed()
+
+        if pressed[pygame.K_UP]:
+            MAX_ALERT_TIME += 8
+
+        elif pressed [pygame.K_DOWN] and (MAX_ALERT_TIME - 8) > MIN_ALERT_TIME:
+            MAX_ALERT_TIME -= 8
+
+        #
+        # Display and sound
+        #
         screen.fill(BLACK)
 
         # Draw buttons
         for button in buttons:
             button.draw(scroll)
+
+        max_delay_s = float(MAX_ALERT_TIME) / 60.00
+        max_delay_text = csfont.render("Max alert delay: %d frames (%.2f s)" % (MAX_ALERT_TIME, max_delay_s), True, WHITE)
+        screen.blit(max_delay_text, (10, 10))
 
         pygame.display.flip()
         clock.tick(FRAMERATE)
