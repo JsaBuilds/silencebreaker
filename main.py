@@ -1,6 +1,7 @@
 import pygame
 import random
 import os
+from channelcontroller import ChannelController
 
 pygame.init()
 pygame.mixer.init()
@@ -59,7 +60,6 @@ class ClickButton(object):
         self.clicked = False
         self.play = False
         self.clicktime = 0
-        self.play_timer = 0
 
     def display(self, button_color, scroll_offset):
         # Draw button and text
@@ -100,8 +100,8 @@ class ClickButton(object):
         if self.play:
             button_color = WHITE
             self.on_play()
-        else:
-            self.play_timer = 0
+        #else:
+            #self.play_timer = 0
 
         # Draw button and text
         self.display(button_color, scroll_offset)
@@ -113,24 +113,32 @@ class SoundButton(ClickButton):
     def __init__(self, x, y, directory, sound):
         super().__init__(x, y, (SCREEN_WIDTH / 2) - (BUTTON_PADDING / 2) - SCREEN_MARGIN, BUTTON_HEIGHT, sound)
 
+        # Initialize a random delay
+        self.play_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
         # Sound
         self.sound = pygame.mixer.Sound("%s/%s" % (directory, sound))
         self.font = bigfont.render(sound.replace(".mp3", "").replace(".wav", "").replace(".ogg", ""), True, BLACK)
+
+    def reset_timer(self):
+        self.play_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+
+    def timer_up(self):
+        return self.play_timer == 0
 
     def on_play(self):
         if self.play_timer > 0:
             self.play_timer -= 1
 
-        else:
-            self.sound.play()
-            self.play_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+        #else:
+            #self.sound.play()
+            #self.reset_timer()
 
 
 # Tab button (switching between button folders)
 class TabButton(ClickButton):
 
     def __init__(self, x, y, text):
-        super().__init__(x, y, SCREEN_MARGIN - (4 * BUTTON_PADDING), BUTTON_HEIGHT, text)
+        super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
         self.switched = False
 
     def get_input(self, current_tab):
@@ -181,6 +189,23 @@ class TabButton(ClickButton):
             self.switched = True
 
 
+#############################################################
+#
+# ButtonInitializer: Handles button initialization on startup
+#
+#############################################################
+class ButtonInitializer(object):
+
+    def __init__(self):
+        pass
+
+    # TODO: make this work for the base directory as well.
+    def create_sound_button(soundfile_dir, soundfile, sounds_dict):
+        tab_name = os.path.basename(soundfile_dir)
+        print("New file: \'%s\' added to tab \'%s\'" % (soundfile, tab_name))
+        sounds_dict[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), soundfile_dir, soundfile))
+
+
 if __name__ == "__main__":
 
     #
@@ -197,21 +222,30 @@ if __name__ == "__main__":
     subdir_button_names = []
     current = "alerts"
 
+    # Create channel controller (default: 4 channels)
+    chnl_ctrl = ChannelController(4)
+
+
     #
     # Directory search and load sounds.
     #
-    for root, dirs, files in os.walk('alerts'):
+    debug_dir = False
+
+    SOUNDS_DIR = os.path.expanduser("~/silencebreaker/alerts/")
+    if debug_dir:
+        SOUNDS_DIR = os.path.expanduser("~/Desktop/silenceBreaker/alerts")
+
+    for root, dirs, files in os.walk(SOUNDS_DIR):
 
         count = 0
         ypos = 0
 
-        print(root)
+        print(f"Sounds directory located at {root}")
         subdir_button_names.append(root)
-        #if len(dirs) > 0:
-            #subdir_button_names.append(root)
-            #for subdir in dirs:
-                #subdir_button_names.append(subdir)
-        master_dict[root] = []
+        tab_name = os.path.basename(root)
+        print(f"Subdirectories: {dirs}")
+        print("Tab name: \'%s\'" % tab_name)
+        master_dict[tab_name] = []
 
         for file in files:
             if file.endswith(".mp3") or file.endswith(".wav") or file.endswith(".ogg"):
@@ -222,8 +256,9 @@ if __name__ == "__main__":
                     ypos += 1
 
                 # Add new button for the folder.
-                print("New file: \'%s\' added to tab \'%s\'" % (file, root))
-                master_dict[root].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), root, file))
+                tab_name = os.path.basename(root)
+                print("New file: \'%s\' added to tab \'%s\'" % (file, tab_name))
+                master_dict[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), root, file))
                 count += 1
 
     #
@@ -231,11 +266,12 @@ if __name__ == "__main__":
     #
     count = 1
     for subdir in subdir_button_names:
-        tab_buttons[subdir] = TabButton(SCREEN_WIDTH - SCREEN_MARGIN + (2 * BUTTON_PADDING), \
-                                        count * (BUTTON_HEIGHT + BUTTON_PADDING), subdir)
+        tab_name = os.path.basename(subdir)
+        tab_buttons[tab_name] = TabButton(SCREEN_WIDTH - SCREEN_MARGIN + (2 * BUTTON_PADDING), \
+                                             count * (BUTTON_HEIGHT + BUTTON_PADDING), tab_name)
         count += 1
 
-    tab_buttons["alerts"].play = True
+    #tab_buttons["alerts"].play = True
 
     #
     # Main loop
@@ -268,9 +304,8 @@ if __name__ == "__main__":
                 elif event.key == pygame.K_LEFT and (MAX_ALERT_TIME - MINUTE) > MIN_ALERT_TIME:
                     MAX_ALERT_TIME -= MINUTE
 
-            # Scroll through the buttons. (The 'scroll' variable is an
-            # offset that is added to the buttons' original positions
-            # to alter where they are.)
+            # Scroll through the buttons. (The 'scroll' variable is an offset that is added 
+            # to the buttons' original positions to alter where they are.)
             elif event.type == pygame.MOUSEWHEEL:
                 
                 scroll += (event.y * FRAMERATE)
@@ -297,9 +332,15 @@ if __name__ == "__main__":
         # Draw buttons
         for key, buttons in master_dict.items():
 
-            if current == key:
-                for button in buttons:
+            
+            for button in buttons:
+                if current == key:
                     button.update(scroll)
+
+                if button.timer_up() and chnl_ctrl.queued_to_channel(button.sound):
+                    button.reset_timer()
+
+
 
         # Draw side windows.
         pygame.draw.rect(screen, DARK_GREY, pygame.Rect((0, 0), (SCREEN_MARGIN - BUTTON_PADDING, SCREEN_HEIGHT)))
