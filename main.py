@@ -1,7 +1,9 @@
 import pygame
 import random
+import glob
 import os
 from channelcontroller import ChannelController
+#from constants import *
 
 pygame.init()
 pygame.mixer.init()
@@ -41,12 +43,8 @@ clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SCREEN_SIZE)
 
 # Generic button
-class ClickButton(object):
+class Button(object):
     def __init__(self, x, y, w, h, text):
-
-        # Text
-        self.text = text
-        self.font = bigfont.render(text, True, BLACK)
 
         # Positioning and dimensions
         self.x = x
@@ -55,17 +53,32 @@ class ClickButton(object):
         self.h = h
         self.x2 = self.x + self.w
         self.y2 = self.y + self.h
-        
+
+        # Text rendering / sizing
+        self.text = text.replace(".mp3", "").replace(".wav", "").replace(".ogg", "")
+        self.fontsize = FONT_LARGE
+        self.font_type = bigfont
+        self.font_y_offset = 0
+
+        # Adjust text size to fit within button
+        while self.font_type.size(self.text)[0] > (self.w - (2 * BUTTON_PADDING)):
+            self.fontsize -= 1
+            self.font_y_offset += 0.5
+            self.font_type = pygame.font.SysFont("Liberation Serif", self.fontsize, bold=True)
+
+        self.font = self.font_type.render(self.text, True, BLACK)
+
         # State variables
         self.clicked = False
-        self.play = False
         self.clicktime = 0
+        self.is_pressed = False
 
+    # Draw button and text
     def display(self, button_color, scroll_offset):
-        # Draw button and text
         pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y + scroll_offset), (self.w, self.h)))
-        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + scroll_offset))
+        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset + scroll_offset))
 
+    # Get mouse clicked input
     def get_input(self, scroll_offset):
         mouse = pygame.mouse.get_pos()
         get_click = pygame.mouse.get_pressed()
@@ -78,10 +91,18 @@ class ClickButton(object):
             if get_click == (True, False, False) and not self.clicked:
                 self.clicked = True
                 self.clicktime = 10
-                self.play = not self.play
+                self.is_pressed = not self.is_pressed
+
+    # Control the delay between clicks.
+    def reduce_clicktime(self):
+        if self.clicked and self.clicktime > 0:
+            self.clicktime -= 1
+
+            if self.clicktime == 0:
+                self.clicked = False
 
     # Special function to be performed when button is pressed.
-    def on_play(self):
+    def pressed_action(self):
         pass
 
     def update(self, scroll_offset):
@@ -89,44 +110,38 @@ class ClickButton(object):
         
         # Check if mouse is over button
         self.get_input(scroll_offset)
+        self.reduce_clicktime()
 
-        # Code to control the delay between clicks.
-        if self.clicked and self.clicktime > 0:
-            self.clicktime -= 1
-
-            if self.clicktime == 0:
-                self.clicked = False
-
-        if self.play:
+        if self.is_pressed:
             button_color = WHITE
-            self.on_play()
+            self.pressed_action()
         #else:
-            #self.play_timer = 0
+            #self.is_pressed_timer = 0
 
         # Draw button and text
         self.display(button_color, scroll_offset)
 
 
 # Sound button
-class SoundButton(ClickButton):
+class SoundButton(Button):
 
     def __init__(self, x, y, directory, sound):
         super().__init__(x, y, (SCREEN_WIDTH / 2) - (BUTTON_PADDING / 2) - SCREEN_MARGIN, BUTTON_HEIGHT, sound)
 
-        # Initialize a random delay
-        self.play_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+        # Delay before playing sound (initialized to a random duration)
+        self.sound_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+
         # Sound
         self.sound = pygame.mixer.Sound("%s/%s" % (directory, sound))
-        self.font = bigfont.render(sound.replace(".mp3", "").replace(".wav", "").replace(".ogg", ""), True, BLACK)
 
     def reset_timer(self):
-        self.play_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+        self.sound_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
 
     def timer_up(self):
-        return self.play_timer == 0
+        return self.sound_timer == 0
 
-    def on_play(self):
-        if self.play_timer > 0:
+    def pressed_action(self):
+        if self.sound_timer > 0:
             self.play_timer -= 1
 
         #else:
@@ -135,7 +150,7 @@ class SoundButton(ClickButton):
 
 
 # Tab button (switching between button folders)
-class TabButton(ClickButton):
+class TabButton(Button):
 
     def __init__(self, x, y, text):
         super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
@@ -154,7 +169,7 @@ class TabButton(ClickButton):
             if get_click == (True, False, False) and not self.clicked:
                 self.clicked = True
                 self.clicktime = 10
-                self.play = True
+                self.is_pressed = True
                 current = self.text
 
         return current
@@ -166,25 +181,19 @@ class TabButton(ClickButton):
         current = self.get_input(current_tab)
 
         if current != self.text:
-            self.play = False
+            self.is_pressed = False
             self.switched = False
 
-        # Code to control the delay between clicks.
-        if self.clicked and self.clicktime > 0:
-            self.clicktime -= 1
+        self.reduce_clicktime()
 
-            if self.clicktime == 0:
-                self.clicked = False
-
-        if self.play:
+        if self.is_pressed:
             button_color = WHITE
-            self.on_play()
+            self.pressed_action()
 
-        # Draw button and text
         self.display(button_color, 0)
         return current
 
-    def on_play(self):
+    def pressed_action(self):
         if not self.switched:
             self.switched = True
 
@@ -219,7 +228,8 @@ if __name__ == "__main__":
     master_dict = {}
     buttons = []
     tab_buttons = {}
-    subdir_button_names = []
+    #subdir_button_names = []
+    subdirs = []
     current = "alerts"
 
     # Create channel controller (default: 4 channels)
@@ -235,43 +245,38 @@ if __name__ == "__main__":
     if debug_dir:
         SOUNDS_DIR = os.path.expanduser("~/Desktop/silenceBreaker/alerts")
 
+    tab_count = 0
     for root, dirs, files in os.walk(SOUNDS_DIR):
 
-        count = 0
+        alerts_in_tab = 0
         ypos = 0
 
-        print(f"Sounds directory located at {root}")
-        subdir_button_names.append(root)
+        print(f"Looking at directory {root}")
+       # subdir_button_names.append(root)
         tab_name = os.path.basename(root)
-        print(f"Subdirectories: {dirs}")
+        if tab_name == '':
+            tab_name = "Sounds"
+
         print("Tab name: \'%s\'" % tab_name)
+        tab_buttons[tab_name] = TabButton(SCREEN_WIDTH - SCREEN_MARGIN + (2 * BUTTON_PADDING), \
+                                                     (tab_count + 1) * (BUTTON_HEIGHT + BUTTON_PADDING), tab_name)
         master_dict[tab_name] = []
+        tab_count += 1
 
         for file in files:
             if file.endswith(".mp3") or file.endswith(".wav") or file.endswith(".ogg"):
                 xpos = SCREEN_MARGIN
-                if count % 2 != 0:
+                if alerts_in_tab % 2 != 0:
                     xpos = (SCREEN_WIDTH / 2) + (BUTTON_PADDING / 2)
-                elif count > 0:
+                elif alerts_in_tab > 0:
                     ypos += 1
 
                 # Add new button for the folder.
-                tab_name = os.path.basename(root)
                 print("New file: \'%s\' added to tab \'%s\'" % (file, tab_name))
                 master_dict[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), root, file))
-                count += 1
+                alerts_in_tab += 1
 
-    #
-    # Create tab buttons
-    #
-    count = 1
-    for subdir in subdir_button_names:
-        tab_name = os.path.basename(subdir)
-        tab_buttons[tab_name] = TabButton(SCREEN_WIDTH - SCREEN_MARGIN + (2 * BUTTON_PADDING), \
-                                             count * (BUTTON_HEIGHT + BUTTON_PADDING), tab_name)
-        count += 1
-
-    #tab_buttons["alerts"].play = True
+    tab_buttons["Sounds"].is_pressed = True
 
     #
     # Main loop
