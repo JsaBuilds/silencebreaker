@@ -3,6 +3,8 @@ import random
 import glob
 import os
 from channelcontroller import ChannelController
+from file_utils import open_dir_dialogue, load_settings, update_settings
+from gui_utils import mouse_down
 #from constants import *
 
 pygame.init()
@@ -33,6 +35,8 @@ WHITE = (255, 255, 255)
 GREY = (127, 127, 127)
 DARK_GREY = (90, 90, 90)
 BLACK = (0, 0, 0)
+
+BUTTON_CLICK_TIME = 10
 
 # Fonts
 csfont = pygame.font.SysFont("comicsans", FONT_SMALL, bold=True)
@@ -74,23 +78,23 @@ class Button(object):
         self.is_pressed = False
 
     # Draw button and text
-    def display(self, button_color, scroll_offset):
-        pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y + scroll_offset), (self.w, self.h)))
-        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset + scroll_offset))
+    def display(self, button_color):
+        pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y), (self.w, self.h)))
+        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset))
 
     # Get mouse clicked input
-    def get_input(self, scroll_offset):
+    def get_input(self):
         mouse = pygame.mouse.get_pos()
         get_click = pygame.mouse.get_pressed()
 
         # Mouse on top of button
         if mouse[0] >= self.x and mouse[0] <= self.x2 and \
-           mouse[1] <= (self.y2 + scroll_offset) and mouse[1] >= (self.y + scroll_offset):
+           mouse[1] <= self.y2 and mouse[1] >= self.y:
 
             # If clicked button, toggle activate/deactivate.
             if get_click == (True, False, False) and not self.clicked:
                 self.clicked = True
-                self.clicktime = 10
+                self.clicktime = BUTTON_CLICK_TIME
                 self.is_pressed = not self.is_pressed
 
     # Control the delay between clicks.
@@ -100,16 +104,21 @@ class Button(object):
 
             if self.clicktime == 0:
                 self.clicked = False
+                self.release_action()
 
     # Special function to be performed when button is pressed.
     def pressed_action(self):
         pass
 
-    def update(self, scroll_offset):
+    # Action performed when button is released
+    def release_action(self):
+        self.is_pressed = False
+
+    def update(self):
         button_color = GREY
         
         # Check if mouse is over button
-        self.get_input(scroll_offset)
+        self.get_input()
         self.reduce_clicktime()
 
         if self.is_pressed:
@@ -119,7 +128,7 @@ class Button(object):
             #self.is_pressed_timer = 0
 
         # Draw button and text
-        self.display(button_color, scroll_offset)
+        self.display(button_color)
 
 
 # Sound button
@@ -142,11 +151,50 @@ class SoundButton(Button):
 
     def pressed_action(self):
         if self.sound_timer > 0:
-            self.play_timer -= 1
+            self.sound_timer -= 1
 
         #else:
             #self.sound.play()
             #self.reset_timer()
+
+    def release_action(self):
+        pass
+
+    # Draw button and text
+    def display(self, button_color, scroll_offset):
+        pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y + scroll_offset), (self.w, self.h)))
+        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset + scroll_offset))
+
+    # Get mouse clicked input
+    def get_input(self, scroll_offset):
+        mouse = pygame.mouse.get_pos()
+        get_click = pygame.mouse.get_pressed()
+
+        # Mouse on top of button
+        if mouse[0] >= self.x and mouse[0] <= self.x2 and \
+           mouse[1] <= (self.y2 + scroll_offset) and mouse[1] >= (self.y + scroll_offset):
+
+            # If clicked button, toggle activate/deactivate.
+            if get_click == (True, False, False) and not self.clicked:
+                self.clicked = True
+                self.clicktime = BUTTON_CLICK_TIME
+                self.is_pressed = not self.is_pressed
+
+    def update(self, scroll_offset):
+            button_color = GREY
+
+            # Check if mouse is over button
+            self.get_input(scroll_offset)
+            self.reduce_clicktime()
+    
+            if self.is_pressed:
+                button_color = WHITE
+                self.pressed_action()
+            #else:
+                #self.is_pressed_timer = 0
+    
+            # Draw button and text
+            self.display(button_color, scroll_offset)
 
 
 # Tab button (switching between button folders)
@@ -157,22 +205,28 @@ class TabButton(Button):
         self.switched = False
 
     def get_input(self, current_tab):
-        mouse = pygame.mouse.get_pos()
+        #mouse = pygame.mouse.get_pos()
         get_click = pygame.mouse.get_pressed()
         current = current_tab
 
         # Mouse on top of button
-        if mouse[0] >= self.x and mouse[0] <= self.x2 and \
-           mouse[1] <= self.y2 and mouse[1] >= self.y:
+        if mouse_down(self.x, self.y, self.x2, self.y2):
 
             # If clicked button, toggle activate/deactivate.
             if get_click == (True, False, False) and not self.clicked:
                 self.clicked = True
-                self.clicktime = 10
+                self.clicktime = BUTTON_CLICK_TIME
                 self.is_pressed = True
                 current = self.text
 
         return current
+
+    def pressed_action(self):
+        if not self.switched:
+            self.switched = True
+
+    def release_action(self):
+            pass
 
     def update(self, current_tab):
         button_color = GREY
@@ -190,13 +244,21 @@ class TabButton(Button):
             button_color = WHITE
             self.pressed_action()
 
-        self.display(button_color, 0)
+        self.display(button_color)
         return current
 
-    def pressed_action(self):
-        if not self.switched:
-            self.switched = True
 
+class MenuButton(Button):
+
+    def __init__(self, x, y, text, function):
+        super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
+        self.function = function
+
+    def pressed_action(self):
+        self.is_pressed = False
+        sounds_dir = open_dir_dialogue(SOUNDS_DIR) # TODO: make independent of this global constant
+        settings["alert_dir"] = sounds_dir
+        update_settings(settings, SETTINGS_PATH)
 
 #############################################################
 #
@@ -222,29 +284,34 @@ if __name__ == "__main__":
     #
     done = False
 
-    count = 0
     scroll = 0
 
-    master_dict = {}
-    buttons = []
-    tab_buttons = {}
-    #subdir_button_names = []
-    subdirs = []
-    current = "alerts"
+    SETTINGS_PATH = os.path.expanduser("~/.silencebreaker/settings.json")
+    SOUNDS_DIR = None
 
-    # Create channel controller (default: 4 channels)
-    chnl_ctrl = ChannelController(4)
+    settings = load_settings(SETTINGS_PATH)
 
+    # Create channel controller (default settings: 4 channels)
+    n_channels = 4
+    if settings["n_channels"] > 0:
+        n_channels = settings["n_channels"]
+    
+    chnl_ctrl = ChannelController(n_channels)
 
     #
     # Directory search and load sounds.
     #
-    debug_dir = False
+    if settings["alert_dir"] == None:
+        SOUNDS_DIR = open_dir_dialogue("~/Music")
+        settings["alert_dir"] = SOUNDS_DIR
+        update_settings(settings, SETTINGS_PATH)
+    else:
+        SOUNDS_DIR = os.path.expanduser(settings["alert_dir"])
 
-    SOUNDS_DIR = os.path.expanduser("~/silencebreaker/alerts/")
-    if debug_dir:
-        SOUNDS_DIR = os.path.expanduser("~/Desktop/silenceBreaker/alerts")
 
+    alert_buttons = {}
+    tab_buttons = {}
+    current = "alerts"
     tab_count = 0
     for root, dirs, files in os.walk(SOUNDS_DIR):
 
@@ -252,7 +319,6 @@ if __name__ == "__main__":
         ypos = 0
 
         print(f"Looking at directory {root}")
-       # subdir_button_names.append(root)
         tab_name = os.path.basename(root)
         if tab_name == '':
             tab_name = "Sounds"
@@ -260,7 +326,7 @@ if __name__ == "__main__":
         print("Tab name: \'%s\'" % tab_name)
         tab_buttons[tab_name] = TabButton(SCREEN_WIDTH - SCREEN_MARGIN + (2 * BUTTON_PADDING), \
                                                      (tab_count + 1) * (BUTTON_HEIGHT + BUTTON_PADDING), tab_name)
-        master_dict[tab_name] = []
+        alert_buttons[tab_name] = []
         tab_count += 1
 
         for file in files:
@@ -273,11 +339,13 @@ if __name__ == "__main__":
 
                 # Add new button for the folder.
                 print("New file: \'%s\' added to tab \'%s\'" % (file, tab_name))
-                master_dict[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), root, file))
+                alert_buttons[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), root, file))
                 alerts_in_tab += 1
 
-    tab_buttons["Sounds"].is_pressed = True
+    tab_buttons[os.path.basename(SOUNDS_DIR)].is_pressed = True
 
+
+    alerts_dir_button = MenuButton(BUTTON_PADDING, 200, "Select alerts folder", "Selects it")
     #
     # Main loop
     #
@@ -294,13 +362,21 @@ if __name__ == "__main__":
                 
                 # Press 'A' key to activate every button at once!
                 if event.key == pygame.K_a:
-                    for button in master_dict[current]:
-                        button.play = True
+                    #for button in alert_buttons[current]:
+                    #    button.play = True
+                    for key, buttons in alert_buttons.items():
+                        for button in buttons:
+                            if current == key:
+                                button.play = True
 
                 # Press 'Q' key to deactivate every button.
                 elif event.key == pygame.K_q:
-                    for button in master_dict[current]:
-                        button.play = False
+                    #for button in alert_buttons[current]:
+                    #    button.play = False
+                    for key, buttons in alert_buttons.items():
+                        for button in buttons:
+                            if current == key:
+                                button.play = False
 
                 # Use right and left arrow keys to add/subtract 1 minute from max alert time.
                 elif event.key == pygame.K_RIGHT:
@@ -317,7 +393,7 @@ if __name__ == "__main__":
 
                 # Check to make sure we're not scrolling offscreen. Undo bad
                 # scrolling if we did.
-                #if scroll > BUTTON_GAP or (scroll + (count * BUTTON_GAP) + BUTTON_GAP) < SCREEN_HEIGHT:
+                #if scroll > BUTTON_GAP or (scroll + (alerts_in_tab * BUTTON_GAP) + BUTTON_GAP) < SCREEN_HEIGHT:
                 #    scroll -= (event.y * FRAMERATE)
 
         # Use continuous key polling for speedy interval change.
@@ -335,9 +411,7 @@ if __name__ == "__main__":
         screen.fill(BLACK)
 
         # Draw buttons
-        for key, buttons in master_dict.items():
-
-            
+        for key, buttons in alert_buttons.items():
             for button in buttons:
                 if current == key:
                     button.update(scroll)
@@ -364,6 +438,8 @@ if __name__ == "__main__":
         screen.blit(tabs_text, (SCREEN_WIDTH - SCREEN_MARGIN + (2 * BUTTON_PADDING), 10))
         for key, button in tab_buttons.items():
             current = button.update(current)
+
+        alerts_dir_button.update()
 
         pygame.display.flip()
         clock.tick(FRAMERATE)
