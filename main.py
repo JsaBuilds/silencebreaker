@@ -5,38 +5,12 @@ import os
 from channelcontroller import ChannelController
 from file_utils import open_dir_dialogue, load_settings, update_settings
 from gui_utils import mouse_down
-#from constants import *
+from constants import *
+from basic_button import Button
 
 pygame.init()
 pygame.mixer.init()
 
-# Dimensions and refresh rate
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 800
-SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
-SCREEN_MARGIN = 150
-BUTTON_PADDING = 10
-BUTTON_HEIGHT = 32
-FRAMERATE = 60
-MINUTE = 60 * FRAMERATE
-
-# Font Sizes
-FONT_SMALL = 16
-FONT_LARGE = 32
-
-BUTTON_GAP = 38
-
-# Max and min seconds between alert time
-MAX_ALERT_TIME = 300 * FRAMERATE # 5 minutes
-MIN_ALERT_TIME = 1 * FRAMERATE  # 1 second
-
-# Colors
-WHITE = (255, 255, 255)
-GREY = (127, 127, 127)
-DARK_GREY = (90, 90, 90)
-BLACK = (0, 0, 0)
-
-BUTTON_CLICK_TIME = 10
 
 # Fonts
 csfont = pygame.font.SysFont("comicsans", FONT_SMALL, bold=True)
@@ -45,90 +19,6 @@ bigfont = pygame.font.SysFont("Liberation Serif", FONT_LARGE, bold=True)
 
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SCREEN_SIZE)
-
-# Generic button
-class Button(object):
-    def __init__(self, x, y, w, h, text):
-
-        # Positioning and dimensions
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
-        self.x2 = self.x + self.w
-        self.y2 = self.y + self.h
-
-        # Text rendering / sizing
-        self.text = text.replace(".mp3", "").replace(".wav", "").replace(".ogg", "")
-        self.fontsize = FONT_LARGE
-        self.font_type = bigfont
-        self.font_y_offset = 0
-
-        # Adjust text size to fit within button
-        while self.font_type.size(self.text)[0] > (self.w - (2 * BUTTON_PADDING)):
-            self.fontsize -= 1
-            self.font_y_offset += 0.5
-            self.font_type = pygame.font.SysFont("Liberation Serif", self.fontsize, bold=True)
-
-        self.font = self.font_type.render(self.text, True, BLACK)
-
-        # State variables
-        self.clicked = False
-        self.clicktime = 0
-        self.is_pressed = False
-
-    # Draw button and text
-    def display(self, button_color):
-        pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y), (self.w, self.h)))
-        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset))
-
-    # Get mouse clicked input
-    def get_input(self):
-        mouse = pygame.mouse.get_pos()
-        get_click = pygame.mouse.get_pressed()
-
-        # Mouse on top of button
-        if mouse[0] >= self.x and mouse[0] <= self.x2 and \
-           mouse[1] <= self.y2 and mouse[1] >= self.y:
-
-            # If clicked button, toggle activate/deactivate.
-            if get_click == (True, False, False) and not self.clicked:
-                self.clicked = True
-                self.clicktime = BUTTON_CLICK_TIME
-                self.is_pressed = not self.is_pressed
-
-    # Control the delay between clicks.
-    def reduce_clicktime(self):
-        if self.clicked and self.clicktime > 0:
-            self.clicktime -= 1
-
-            if self.clicktime == 0:
-                self.clicked = False
-                self.release_action()
-
-    # Special function to be performed when button is pressed.
-    def pressed_action(self):
-        pass
-
-    # Action performed when button is released
-    def release_action(self):
-        self.is_pressed = False
-
-    def update(self):
-        button_color = GREY
-        
-        # Check if mouse is over button
-        self.get_input()
-        self.reduce_clicktime()
-
-        if self.is_pressed:
-            button_color = WHITE
-            self.pressed_action()
-        #else:
-            #self.is_pressed_timer = 0
-
-        # Draw button and text
-        self.display(button_color)
 
 
 # Sound button
@@ -161,9 +51,9 @@ class SoundButton(Button):
         pass
 
     # Draw button and text
-    def display(self, button_color, scroll_offset):
-        pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y + scroll_offset), (self.w, self.h)))
-        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset + scroll_offset))
+    #def display(self, button_color, scroll_offset):
+    #    pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y + scroll_offset), (self.w, self.h)))
+    #    screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset + scroll_offset))
 
     # Get mouse clicked input
     def get_input(self, scroll_offset):
@@ -188,13 +78,13 @@ class SoundButton(Button):
             self.reduce_clicktime()
     
             if self.is_pressed:
-                button_color = WHITE
+                button_color = LIGHT_GREY
                 self.pressed_action()
             #else:
                 #self.is_pressed_timer = 0
     
             # Draw button and text
-            self.display(button_color, scroll_offset)
+            self.display(button_color)#, scroll_offset)
 
 
 # Tab button (switching between button folders)
@@ -241,7 +131,7 @@ class TabButton(Button):
         self.reduce_clicktime()
 
         if self.is_pressed:
-            button_color = WHITE
+            button_color = LIGHT_GREY
             self.pressed_action()
 
         self.display(button_color)
