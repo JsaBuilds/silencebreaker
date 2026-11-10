@@ -43,9 +43,9 @@ class SoundButton(Button):
         if self.sound_timer > 0:
             self.sound_timer -= 1
 
-        #else:
-            #self.sound.play()
-            #self.reset_timer()
+        else:
+            self.sound.play()
+            self.reset_timer()
 
     def release_action(self):
         pass
@@ -221,7 +221,7 @@ if __name__ == "__main__":
                     for key, buttons in alert_buttons.items():
                         for button in buttons:
                             if current == key:
-                                button.play = True
+                                button.is_pressed = True
 
                 # Press 'Q' key to deactivate every button.
                 elif event.key == pygame.K_q:
@@ -230,7 +230,7 @@ if __name__ == "__main__":
                     for key, buttons in alert_buttons.items():
                         for button in buttons:
                             if current == key:
-                                button.play = False
+                                button.is_pressed = False
 
                 # Use right and left arrow keys to add/subtract 1 minute from max alert time.
                 elif event.key == pygame.K_RIGHT:
