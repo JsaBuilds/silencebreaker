@@ -4,7 +4,7 @@ import glob
 import os
 from channelcontroller import ChannelController
 from file_utils import open_dir_dialogue, load_settings, update_settings
-from gui_utils import mouse_down
+from gui_utils import mouse_hover, lmb_pressed
 from constants import *
 from basic_button import Button
 
@@ -50,42 +50,6 @@ class SoundButton(Button):
     def release_action(self):
         pass
 
-    # Draw button and text
-    #def display(self, button_color, scroll_offset):
-    #    pygame.draw.rect(screen, button_color, pygame.Rect((self.x, self.y + scroll_offset), (self.w, self.h)))
-    #    screen.blit(self.font, (self.x + BUTTON_PADDING, self.y - 4 + self.font_y_offset + scroll_offset))
-
-    # Get mouse clicked input
-    def get_input(self, scroll_offset):
-        mouse = pygame.mouse.get_pos()
-        get_click = pygame.mouse.get_pressed()
-
-        # Mouse on top of button
-        if mouse[0] >= self.x and mouse[0] <= self.x2 and \
-           mouse[1] <= (self.y2 + scroll_offset) and mouse[1] >= (self.y + scroll_offset):
-
-            # If clicked button, toggle activate/deactivate.
-            if get_click == (True, False, False) and not self.clicked:
-                self.clicked = True
-                self.clicktime = BUTTON_CLICK_TIME
-                self.is_pressed = not self.is_pressed
-
-    def update(self, scroll_offset):
-            button_color = GREY
-
-            # Check if mouse is over button
-            self.get_input(scroll_offset)
-            self.reduce_clicktime()
-    
-            if self.is_pressed:
-                button_color = LIGHT_GREY
-                self.pressed_action()
-            #else:
-                #self.is_pressed_timer = 0
-    
-            # Draw button and text
-            self.display(button_color)#, scroll_offset)
-
 
 # Tab button (switching between button folders)
 class TabButton(Button):
@@ -100,7 +64,7 @@ class TabButton(Button):
         current = current_tab
 
         # Mouse on top of button
-        if mouse_down(self.x, self.y, self.x2, self.y2):
+        if mouse_hover(self.x, self.y, self.x2, self.y2):
 
             # If clicked button, toggle activate/deactivate.
             if get_click == (True, False, False) and not self.clicked:

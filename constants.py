@@ -2,15 +2,18 @@
 Global constants used across modules
 '''
 
-# Dimensions
+# Screen Dimensions
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 800
 SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
 SCREEN_MARGIN = 150
 
+# Button dimensions
 BUTTON_PADDING = 10
 BUTTON_HEIGHT = 32
 BUTTON_GAP = BUTTON_HEIGHT + 6 # Vertical gap between buttons on screen
+BUTTON_EDGE_ROUNDING = 10 # Width of the ellipses that smooth out the sides of the buttons
+
 
 # Refresh rate
 FRAMERATE = 60

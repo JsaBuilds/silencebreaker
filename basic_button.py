@@ -3,9 +3,11 @@ Generic Button class
 '''
 
 import pygame
-from constants import FONT_LARGE, BUTTON_PADDING, BLACK, GREY, WHITE, BUTTON_CLICK_TIME, SCREEN_SIZE, LIGHT_GREY
+from constants import FONT_LARGE, BLACK, GREY, LIGHT_GREY, \
+                      SCREEN_SIZE, BUTTON_PADDING, BUTTON_EDGE_ROUNDING, BUTTON_CLICK_TIME
 
-BUTTON_EDGE_ROUNDING = 10 # Width of the ellipses that smooth out the sides of the buttons
+from gui_utils import mouse_hover, lmb_pressed
+
 
 screen = pygame.display.set_mode(SCREEN_SIZE)
 
@@ -40,40 +42,40 @@ class Button(object):
         self.clicktime = 0
         self.is_pressed = False
 
+
     # Draw button and text
-    def display(self, button_color):
+    def display(self, button_color, y_offset=0):
         border_padding = self.h / 10
         
         # Draw the base of the button
-        pygame.draw.rect(screen, GREY, pygame.Rect((self.x + 5, self.y), (self.w - 10, self.h)))
-        pygame.draw.ellipse(screen, GREY, pygame.Rect((self.x, self.y), (10, self.h)))
-        pygame.draw.ellipse(screen, GREY, pygame.Rect((self.x + self.w - 10, self.y), (10, self.h)))
+        pygame.draw.rect(screen, GREY, pygame.Rect((self.x + 5, self.y + y_offset), (self.w - 10, self.h)))
+        pygame.draw.ellipse(screen, GREY, pygame.Rect((self.x, self.y + y_offset), (10, self.h)))
+        pygame.draw.ellipse(screen, GREY, pygame.Rect((self.x + self.w - 10, self.y + y_offset), (10, self.h)))
         
         # Draw the button interior
-        pygame.draw.rect(screen, button_color, pygame.Rect((self.x + border_padding + 5, self.y + border_padding), 
+        pygame.draw.rect(screen, button_color, pygame.Rect((self.x + border_padding + 5, self.y + border_padding + y_offset), 
                                                            (self.w - border_padding*2 - 10, self.h - border_padding*2)))
-        pygame.draw.ellipse(screen, button_color, pygame.Rect((self.x + border_padding, self.y + border_padding), 
+        pygame.draw.ellipse(screen, button_color, pygame.Rect((self.x + border_padding, self.y + border_padding + y_offset), 
                                                               (10, self.h - border_padding*2)))
-        pygame.draw.ellipse(screen, button_color, pygame.Rect((self.x + self.w - 10 - border_padding, self.y + border_padding), 
+        pygame.draw.ellipse(screen, button_color, pygame.Rect((self.x + self.w - 10 - border_padding, self.y + border_padding + y_offset), 
                                                               (10, self.h - border_padding*2)))
 
         # Draw the text
-        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y + self.font_y_offset))
+        screen.blit(self.font, (self.x + BUTTON_PADDING, self.y + self.font_y_offset + y_offset))
 
-    # Get mouse clicked input
-    def get_input(self):
-        mouse = pygame.mouse.get_pos()
-        get_click = pygame.mouse.get_pressed()
+
+    # Get mouse input
+    def get_input(self, y_offset=0):
 
         # Mouse on top of button
-        if mouse[0] >= self.x and mouse[0] <= self.x2 and \
-           mouse[1] <= self.y2 and mouse[1] >= self.y:
+        if mouse_hover(self.x, self.y + y_offset, self.x2, self.y2 + y_offset):
 
             # If clicked button, toggle activate/deactivate.
-            if get_click == (True, False, False) and not self.clicked:
+            if lmb_pressed() and not self.clicked:
                 self.clicked = True
                 self.clicktime = BUTTON_CLICK_TIME
                 self.is_pressed = not self.is_pressed
+
 
     # Control the delay between clicks.
     def reduce_clicktime(self):
@@ -84,26 +86,27 @@ class Button(object):
                 self.clicked = False
                 self.release_action()
 
+
     # Special function to be performed when button is pressed.
     def pressed_action(self):
         pass
+
 
     # Action performed when button is released
     def release_action(self):
         self.is_pressed = False
 
-    def update(self):
+
+    # Primary button functionality
+    def update(self, y_offset=0):
         button_color = GREY
         
-        # Check if mouse is over button
-        self.get_input()
+        self.get_input(y_offset)
         self.reduce_clicktime()
 
         if self.is_pressed:
             button_color = LIGHT_GREY
             self.pressed_action()
-        #else:
-            #self.is_pressed_timer = 0
 
         # Draw button and text
-        self.display(button_color)
+        self.display(button_color, y_offset)
