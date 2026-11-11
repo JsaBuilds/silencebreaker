@@ -89,12 +89,13 @@ class Button(object):
 
     # Special function to be performed when button is pressed.
     def pressed_action(self):
-        pass
+        pass # If the button stays in the pressed state once clicked, put its action here.
 
 
     # Action performed when button is released
     def release_action(self):
         self.is_pressed = False
+        # If the button releases immediately, put its action here.
 
 
     # Primary button functionality

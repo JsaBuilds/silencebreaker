@@ -17,6 +17,7 @@ BUTTON_EDGE_ROUNDING = 10 # Width of the ellipses that smooth out the sides of t
 
 # Refresh rate
 FRAMERATE = 60
+SECOND = FRAMERATE
 MINUTE = 60 * FRAMERATE
 
 # Font Sizes

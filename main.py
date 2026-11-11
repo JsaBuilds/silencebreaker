@@ -102,17 +102,49 @@ class TabButton(Button):
         return current
 
 
+# menu button functions:
+def choose_alerts_dir():
+    sounds_dir = open_dir_dialogue(SOUNDS_DIR) # TODO: make independent of this global constant
+    settings["alert_dir"] = sounds_dir
+    update_settings(settings, SETTINGS_PATH)
+
+def get_current_tab_name():
+    global current
+    return current
+
+def set_tab_active(dict_of_buttons, active):
+    current_tab_name = get_current_tab_name()
+
+    for key, buttons in dict_of_buttons.items():
+        for button in buttons:
+            if current_tab_name == key:
+                button.is_pressed = active
+
+# Change maximum delay by a certain number of frames
+def d_max_delay(step, min_val, max_val):
+    global MAX_ALERT_TIME
+    MAX_ALERT_TIME += step
+    if MAX_ALERT_TIME < min_val:
+        MAX_ALERT_TIME = min_val
+
+    if MAX_ALERT_TIME > max_val:
+            MAX_ALERT_TIME = max_val
+
+def dec_max_delay():
+    pass
+
 class MenuButton(Button):
 
-    def __init__(self, x, y, text, function):
+    def __init__(self, x, y, text, function, *args):
         super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
         self.function = function
+        self.args = args
+        #print("Arguments: ")
+        #print(enumerate(self.args))
 
-    def pressed_action(self):
+    def release_action(self):
         self.is_pressed = False
-        sounds_dir = open_dir_dialogue(SOUNDS_DIR) # TODO: make independent of this global constant
-        settings["alert_dir"] = sounds_dir
-        update_settings(settings, SETTINGS_PATH)
+        self.function(*self.args)
 
 #############################################################
 #
@@ -129,6 +161,8 @@ class ButtonInitializer(object):
         tab_name = os.path.basename(soundfile_dir)
         print("New file: \'%s\' added to tab \'%s\'" % (soundfile, tab_name))
         sounds_dict[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), soundfile_dir, soundfile))
+
+
 
 
 if __name__ == "__main__":
@@ -199,7 +233,15 @@ if __name__ == "__main__":
     tab_buttons[os.path.basename(SOUNDS_DIR)].is_pressed = True
 
 
-    alerts_dir_button = MenuButton(BUTTON_PADDING, 200, "Select alerts folder", "Selects it")
+    menu_buttons = [
+        MenuButton(BUTTON_PADDING, 200, "Select alerts folder", choose_alerts_dir), # update alerts directory
+        MenuButton(BUTTON_PADDING, 240, "Activate whole tab", set_tab_active, alert_buttons, True), # Activate entire tab
+        MenuButton(BUTTON_PADDING, 280, "Deactivate whole tab", set_tab_active, alert_buttons, False), # Deactivate entire tab
+        MenuButton(BUTTON_PADDING, 320, " +1 Min", d_max_delay, MINUTE, MIN_ALERT_TIME, 60 * MINUTE), # add 1 minute from timer
+        MenuButton(BUTTON_PADDING, 360, " -1 Min", d_max_delay, -1*MINUTE, MIN_ALERT_TIME, 60 * MINUTE), # subtract one minute from timer
+        MenuButton(BUTTON_PADDING, 400, " +1 Sec", d_max_delay, SECOND, MIN_ALERT_TIME, 60 * MINUTE), # add 1 minute from timer
+        MenuButton(BUTTON_PADDING, 440, " -1 Sec", d_max_delay, -1*SECOND, MIN_ALERT_TIME, 60 * MINUTE), # subtract one minute from timer
+    ]
     #
     # Main loop
     #
@@ -216,8 +258,6 @@ if __name__ == "__main__":
                 
                 # Press 'A' key to activate every button at once!
                 if event.key == pygame.K_a:
-                    #for button in alert_buttons[current]:
-                    #    button.play = True
                     for key, buttons in alert_buttons.items():
                         for button in buttons:
                             if current == key:
@@ -225,8 +265,6 @@ if __name__ == "__main__":
 
                 # Press 'Q' key to deactivate every button.
                 elif event.key == pygame.K_q:
-                    #for button in alert_buttons[current]:
-                    #    button.play = False
                     for key, buttons in alert_buttons.items():
                         for button in buttons:
                             if current == key:
@@ -280,9 +318,10 @@ if __name__ == "__main__":
         pygame.draw.rect(screen, DARK_GREY, pygame.Rect((SCREEN_WIDTH - SCREEN_MARGIN + BUTTON_PADDING, 0), (SCREEN_WIDTH, SCREEN_HEIGHT)))
 
         # Delay display
-        max_delay_s = float(MAX_ALERT_TIME) / 60.00
+        max_delay_m = MAX_ALERT_TIME / 3600
+        max_delay_s = (MAX_ALERT_TIME / 60) % 60
         delay_frames = csfont.render("%d frames" % MAX_ALERT_TIME, True, BLACK)
-        delay_seconds = csfont.render("(%.2f s)" % max_delay_s, True, BLACK)
+        delay_seconds = csfont.render("(%dm %ds)" % (max_delay_m, max_delay_s), True, BLACK)
         screen.blit(csfont.render("Maximum Delay:", True, BLACK), (10, 10))
         screen.blit(delay_frames, (10, 10 + FONT_SMALL))
         screen.blit(delay_seconds, (10, 10 + (2 * FONT_SMALL)))
@@ -293,7 +332,8 @@ if __name__ == "__main__":
         for key, button in tab_buttons.items():
             current = button.update(current)
 
-        alerts_dir_button.update()
+        for button in menu_buttons:
+            button.update()
 
         pygame.display.flip()
         clock.tick(FRAMERATE)
