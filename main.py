@@ -6,101 +6,17 @@ from channelcontroller import ChannelController
 from file_utils import open_dir_dialogue, load_settings, update_settings
 from gui_utils import mouse_hover, lmb_pressed
 from constants import *
-from basic_button import Button
+from buttons import SoundButton, TabButton, MenuButton
 
 pygame.init()
 pygame.mixer.init()
-
 
 # Fonts
 csfont = pygame.font.SysFont("comicsans", FONT_SMALL, bold=True)
 bigfont = pygame.font.SysFont("Liberation Serif", FONT_LARGE, bold=True)
 
-
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SCREEN_SIZE)
-
-
-# Sound button
-class SoundButton(Button):
-
-    def __init__(self, x, y, directory, sound):
-        super().__init__(x, y, (SCREEN_WIDTH / 2) - (BUTTON_PADDING / 2) - SCREEN_MARGIN, BUTTON_HEIGHT, sound)
-
-        # Delay before playing sound (initialized to a random duration)
-        self.sound_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
-
-        # Sound
-        self.sound = pygame.mixer.Sound("%s/%s" % (directory, sound))
-
-    def reset_timer(self):
-        self.sound_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
-
-    def timer_up(self):
-        return self.sound_timer == 0
-
-    def pressed_action(self):
-        if self.sound_timer > 0:
-            self.sound_timer -= 1
-
-        else:
-            self.sound.play()
-            self.reset_timer()
-
-    def release_action(self):
-        pass
-
-
-# Tab button (switching between button folders)
-class TabButton(Button):
-
-    def __init__(self, x, y, text):
-        super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
-        self.switched = False
-
-    def get_input(self, current_tab):
-        #mouse = pygame.mouse.get_pos()
-        get_click = pygame.mouse.get_pressed()
-        current = current_tab
-
-        # Mouse on top of button
-        if mouse_hover(self.x, self.y, self.x2, self.y2):
-
-            # If clicked button, toggle activate/deactivate.
-            if get_click == (True, False, False) and not self.clicked:
-                self.clicked = True
-                self.clicktime = BUTTON_CLICK_TIME
-                self.is_pressed = True
-                current = self.text
-
-        return current
-
-    def pressed_action(self):
-        if not self.switched:
-            self.switched = True
-
-    def release_action(self):
-            pass
-
-    def update(self, current_tab):
-        button_color = GREY
-        
-        # Check if mouse is over button
-        current = self.get_input(current_tab)
-
-        if current != self.text:
-            self.is_pressed = False
-            self.switched = False
-
-        self.reduce_clicktime()
-
-        if self.is_pressed:
-            button_color = LIGHT_GREY
-            self.pressed_action()
-
-        self.display(button_color)
-        return current
-
 
 # menu button functions:
 def choose_alerts_dir():
@@ -130,22 +46,6 @@ def d_max_delay(step, min_val, max_val):
     if MAX_ALERT_TIME > max_val:
             MAX_ALERT_TIME = max_val
 
-def dec_max_delay():
-    pass
-
-class MenuButton(Button):
-
-    def __init__(self, x, y, text, function, *args):
-        super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
-        self.function = function
-        self.args = args
-        #print("Arguments: ")
-        #print(enumerate(self.args))
-
-    def release_action(self):
-        self.is_pressed = False
-        self.function(*self.args)
-
 #############################################################
 #
 # ButtonInitializer: Handles button initialization on startup
@@ -161,8 +61,6 @@ class ButtonInitializer(object):
         tab_name = os.path.basename(soundfile_dir)
         print("New file: \'%s\' added to tab \'%s\'" % (soundfile, tab_name))
         sounds_dict[tab_name].append(SoundButton(xpos, ypos * (BUTTON_HEIGHT + BUTTON_PADDING), soundfile_dir, soundfile))
-
-
 
 
 if __name__ == "__main__":
@@ -235,8 +133,8 @@ if __name__ == "__main__":
 
     menu_buttons = [
         MenuButton(BUTTON_PADDING, 200, "Select alerts folder", choose_alerts_dir), # update alerts directory
-        MenuButton(BUTTON_PADDING, 240, "Activate whole tab", set_tab_active, alert_buttons, True), # Activate entire tab
-        MenuButton(BUTTON_PADDING, 280, "Deactivate whole tab", set_tab_active, alert_buttons, False), # Deactivate entire tab
+        MenuButton(BUTTON_PADDING, 240, "Activate tab", set_tab_active, alert_buttons, True), # Activate entire tab
+        MenuButton(BUTTON_PADDING, 280, "Deactivate tab", set_tab_active, alert_buttons, False), # Deactivate entire tab
         MenuButton(BUTTON_PADDING, 320, " +1 Min", d_max_delay, MINUTE, MIN_ALERT_TIME, 60 * MINUTE), # add 1 minute from timer
         MenuButton(BUTTON_PADDING, 360, " -1 Min", d_max_delay, -1*MINUTE, MIN_ALERT_TIME, 60 * MINUTE), # subtract one minute from timer
         MenuButton(BUTTON_PADDING, 400, " +1 Sec", d_max_delay, SECOND, MIN_ALERT_TIME, 60 * MINUTE), # add 1 minute from timer

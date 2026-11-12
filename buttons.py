@@ -3,12 +3,14 @@ Generic Button class
 '''
 
 import pygame
-from constants import FONT_LARGE, BLACK, GREY, LIGHT_GREY, \
-                      SCREEN_SIZE, BUTTON_PADDING, BUTTON_EDGE_ROUNDING, BUTTON_CLICK_TIME
+import random
+#from constants import FONT_LARGE, BLACK, GREY, LIGHT_GREY, \
+#                      SCREEN_SIZE, BUTTON_PADDING, BUTTON_EDGE_ROUNDING, BUTTON_CLICK_TIME
+from constants import *
 
 from gui_utils import mouse_hover, lmb_pressed
 
-
+pygame.mixer.init()
 screen = pygame.display.set_mode(SCREEN_SIZE)
 
 class Button(object):
@@ -111,3 +113,100 @@ class Button(object):
 
         # Draw button and text
         self.display(button_color, y_offset)
+
+
+# Sound button
+class SoundButton(Button):
+
+    def __init__(self, x, y, directory, sound):
+        super().__init__(x, y, (SCREEN_WIDTH / 2) - (BUTTON_PADDING / 2) - SCREEN_MARGIN, BUTTON_HEIGHT, sound)
+
+        # Delay before playing sound (initialized to a random duration)
+        self.sound_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+
+        # Sound
+        self.sound = pygame.mixer.Sound("%s/%s" % (directory, sound))
+
+    def reset_timer(self):
+        self.sound_timer = random.randint(MIN_ALERT_TIME, MAX_ALERT_TIME)
+
+    def timer_up(self):
+        return self.sound_timer == 0
+
+    def pressed_action(self):
+        if self.sound_timer > 0:
+            self.sound_timer -= 1
+
+        else:
+            #self.sound.play()
+            self.reset_timer()
+
+    def release_action(self):
+        if self.is_pressed:
+            self.sound.play()
+
+
+
+# Tab button (switching between button folders)
+class TabButton(Button):
+
+    def __init__(self, x, y, text):
+        super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
+        self.switched = False
+
+    def get_input(self, current_tab):
+        #mouse = pygame.mouse.get_pos()
+        get_click = pygame.mouse.get_pressed()
+        current = current_tab
+
+        # Mouse on top of button
+        if mouse_hover(self.x, self.y, self.x2, self.y2):
+
+            # If clicked button, toggle activate/deactivate.
+            if get_click == (True, False, False) and not self.clicked:
+                self.clicked = True
+                self.clicktime = BUTTON_CLICK_TIME
+                self.is_pressed = True
+                current = self.text
+
+        return current
+
+    def pressed_action(self):
+        if not self.switched:
+            self.switched = True
+
+    def release_action(self):
+            pass
+
+    def update(self, current_tab):
+        button_color = GREY
+        
+        # Check if mouse is over button
+        current = self.get_input(current_tab)
+
+        if current != self.text:
+            self.is_pressed = False
+            self.switched = False
+
+        self.reduce_clicktime()
+
+        if self.is_pressed:
+            button_color = LIGHT_GREY
+            self.pressed_action()
+
+        self.display(button_color)
+        return current
+
+
+class MenuButton(Button):
+
+    def __init__(self, x, y, text, function, *args):
+        super().__init__(x, y, SCREEN_MARGIN - (3 * BUTTON_PADDING), BUTTON_HEIGHT, text)
+        self.function = function
+        self.args = args
+        #print("Arguments: ")
+        #print(enumerate(self.args))
+
+    def release_action(self):
+        self.is_pressed = False
+        self.function(*self.args)
