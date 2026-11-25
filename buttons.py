@@ -1,11 +1,5 @@
-'''
-Generic Button class
-'''
-
 import pygame
 import random
-#from constants import FONT_LARGE, BLACK, GREY, LIGHT_GREY, \
-#                      SCREEN_SIZE, BUTTON_PADDING, BUTTON_EDGE_ROUNDING, BUTTON_CLICK_TIME
 from constants import *
 
 from gui_utils import mouse_hover, lmb_pressed
@@ -65,6 +59,10 @@ class Button(object):
         # Draw the text
         screen.blit(self.font, (self.x + BUTTON_PADDING, self.y + self.font_y_offset + y_offset))
 
+    def set_pressed(self, pressed):
+        self.clicked = True
+        self.clicktime = BUTTON_CLICK_TIME
+        self.is_pressed = pressed
 
     # Get mouse input
     def get_input(self, y_offset=0):
@@ -74,10 +72,7 @@ class Button(object):
 
             # If clicked button, toggle activate/deactivate.
             if lmb_pressed() and not self.clicked:
-                self.clicked = True
-                self.clicktime = BUTTON_CLICK_TIME
-                self.is_pressed = not self.is_pressed
-
+                self.set_pressed((not self.is_pressed))
 
     # Control the delay between clicks.
     def reduce_clicktime(self):
@@ -138,12 +133,16 @@ class SoundButton(Button):
             self.sound_timer -= 1
 
         else:
-            #self.sound.play()
             self.reset_timer()
 
     def release_action(self):
         if self.is_pressed:
             self.sound.play()
+            add_sound_event = pygame.event.Event(ADD_SOUND, { "sound" : self.sound })
+            pygame.event.post(add_sound_event)
+        else:
+            remove_sound_event = pygame.event.Event(REMOVE_SOUND, { "sound" : self.sound })
+            pygame.event.post(remove_sound_event)
 
 
 
@@ -155,7 +154,6 @@ class TabButton(Button):
         self.switched = False
 
     def get_input(self, current_tab):
-        #mouse = pygame.mouse.get_pos()
         get_click = pygame.mouse.get_pressed()
         current = current_tab
 

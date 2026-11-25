@@ -1,1 +1,2 @@
 [] Sounds directory set to '' when selection dialog closed with 'cancel'
+[] SoundButtons stop playing their sounds when they are not visible (update no longer being called)

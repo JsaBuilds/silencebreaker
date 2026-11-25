@@ -1,12 +1,10 @@
 import pygame
-import random
-import glob
 import os
 from channelcontroller import ChannelController
 from file_utils import open_dir_dialogue, load_settings, update_settings
 from gui_utils import mouse_hover, lmb_pressed
 from constants import *
-from buttons import SoundButton, TabButton, MenuButton
+from buttons import SoundButton, TabButton, MenuButton, ADD_SOUND
 
 pygame.init()
 pygame.mixer.init()
@@ -34,7 +32,7 @@ def set_tab_active(dict_of_buttons, active):
     for key, buttons in dict_of_buttons.items():
         for button in buttons:
             if current_tab_name == key:
-                button.is_pressed = active
+                button.set_pressed(active)
 
 # Change maximum delay by a certain number of frames
 def d_max_delay(step, min_val, max_val):
@@ -159,14 +157,14 @@ if __name__ == "__main__":
                     for key, buttons in alert_buttons.items():
                         for button in buttons:
                             if current == key:
-                                button.is_pressed = True
+                                button.set_pressed(True)
 
                 # Press 'Q' key to deactivate every button.
                 elif event.key == pygame.K_q:
                     for key, buttons in alert_buttons.items():
                         for button in buttons:
                             if current == key:
-                                button.is_pressed = False
+                                button.set_pressed(False)
 
                 # Use right and left arrow keys to add/subtract 1 minute from max alert time.
                 elif event.key == pygame.K_RIGHT:
@@ -186,12 +184,23 @@ if __name__ == "__main__":
                 #if scroll > BUTTON_GAP or (scroll + (alerts_in_tab * BUTTON_GAP) + BUTTON_GAP) < SCREEN_HEIGHT:
                 #    scroll -= (event.y * FRAMERATE)
 
+            elif event.type == ADD_SOUND:
+                print(f"Triggered ADD_SOUND event with sound: {event.sound}")
+                chnl_ctrl.add_sound(event.sound)
+
+            elif event.type == REMOVE_SOUND:
+                print(f"Triggered REMOVE_SOUND event with sound: {event.sound}")
+                chnl_ctrl.remove_sound(event.sound)
+
         # Use continuous key polling for speedy interval change.
         pressed = pygame.key.get_pressed()
 
         if pressed[pygame.K_UP]:
             MAX_ALERT_TIME += 8
 
+        # TODO: Currently the sound events only take the original sound, since MAX_ALERT_TIME was imported
+        # by that module previously. The new value must be somehow passed to new sound events when they reset
+        # their timers.
         elif pressed [pygame.K_DOWN] and (MAX_ALERT_TIME - 8) > MIN_ALERT_TIME:
             MAX_ALERT_TIME -= 8
 
@@ -204,12 +213,17 @@ if __name__ == "__main__":
         for key, buttons in alert_buttons.items():
             for button in buttons:
                 if current == key:
+                    # Problems with this approach: cannot play sound while buttons are not being displayed.
+                    # Solution idea: Tell the button to message the ChannelController with its sound, and
+                    # Let the ChannelController create an object with that sound and a timer. Enqueue / dequeue
+                    # and adding / removing sounds is handled by the ChannelController.
                     button.update(scroll)
 
-                if button.timer_up() and chnl_ctrl.queued_to_channel(button.sound):
-                    button.reset_timer()
+                #if button.timer_up() and chnl_ctrl.queued_to_channel(button.sound):
+                #    button.reset_timer()
 
-
+        # New functionality for playing sounds, like described above.
+        chnl_ctrl.play_sounds()
 
         # Draw side windows.
         pygame.draw.rect(screen, DARK_GREY, pygame.Rect((0, 0), (SCREEN_MARGIN - BUTTON_PADDING, SCREEN_HEIGHT)))

@@ -1,6 +1,7 @@
 '''
 Global constants used across modules
 '''
+import pygame
 
 # Screen Dimensions
 SCREEN_WIDTH = 1280
@@ -38,3 +39,8 @@ DARK_GREY = (90, 90, 90)
 BLACK = (0, 0, 0)
 
 BUTTON_CLICK_TIME = 10
+
+
+# Custom Events
+ADD_SOUND = pygame.USEREVENT + 1
+REMOVE_SOUND = pygame.USEREVENT + 2
